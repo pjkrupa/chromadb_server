@@ -1,17 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
-import re
+import re, chromadb, uuid
 from copy import deepcopy
-
-class Part(Enum):
-    HEADER = "header"
-    PREAMBLE = "preamble"
-    BODY = "body"
-    ENDNOTES = "endnotes"
 
 @dataclass
 class Metadata:
-    part: Part
+    part: str = "header"
     chapter: int = 0
     chapter_title: str = ""
     section: int = 0
@@ -24,14 +18,14 @@ class Chunk:
     metadata: Metadata
     text: str = ""
 
-def part_switch(line: str, part: Part):
+def part_switch(line: str, part: str):
     match line:
         case "Whereas:":
-            return True, Part.PREAMBLE
+            return True, "preamble"
         case "HAVE ADOPTED THIS REGULATION:":
-            return True, Part.BODY
+            return True, "body"
         case "J.A. HENNIS-PLASSCHAERT":
-            return True, Part.ENDNOTES
+            return True, "endnotes"
         case _:
             return False, part
         
@@ -50,7 +44,7 @@ roman_numerals = {
 
 with open("./notes/gdpr_clean.txt", "r", encoding="utf-8") as f:
     documents = []
-    state = Metadata(part=Part.HEADER)
+    state = Metadata()
     chunk = Chunk(deepcopy(state))
     for line in f:
         line = line.strip()
@@ -58,12 +52,12 @@ with open("./notes/gdpr_clean.txt", "r", encoding="utf-8") as f:
             continue
         is_switch, state.part = part_switch(line, state.part)
         
-        if is_switch and state.part.value == "preamble":
+        if is_switch and state.part == "preamble":
             documents.append(chunk)
             chunk = Chunk(deepcopy(state))
             continue
         
-        if is_switch and state.part.value == "endnotes":
+        if is_switch and state.part == "endnotes":
             documents.append(chunk)
             state.chapter = 0
             state.chapter_title = "endnotes"
@@ -73,7 +67,7 @@ with open("./notes/gdpr_clean.txt", "r", encoding="utf-8") as f:
             state.article_title = "endnotes"
             chunk = Chunk(deepcopy(state))
 
-        match state.part.value:
+        match state.part:
             case "header":
                 make_chunk(line, chunk)
             case "preamble":
@@ -112,9 +106,17 @@ with open("./notes/gdpr_clean.txt", "r", encoding="utf-8") as f:
 
 documents.append(chunk)
 
-for document in documents:
-    print(document.metadata)
-    print(document.text)
-    print("\n")
-
 print(f"Number of documents: {len(documents)}")
+
+metadatas = [asdict(document.metadata) for document in documents]
+documents = [document.text for document in documents]
+ids = [str(uuid.uuid4()) for i in range(len(documents))]
+
+chroma_client = chromadb.HttpClient(host="localhost", port=8000)
+# chroma_client.delete_collection(name="my_collection")
+collection = chroma_client.get_or_create_collection(name="gdpr")
+collection.upsert(
+        ids=ids, 
+        documents=documents,
+        metadatas=metadatas
+        )
