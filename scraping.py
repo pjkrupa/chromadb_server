@@ -2,7 +2,7 @@ from markdownify import markdownify as md
 from bs4 import BeautifulSoup
 import re
 
-with open("/home/peter/data_projects/chromadb_server/CELEX_32016R0679_EN_TXT.html", "r", encoding="utf-8") as f:
+with open("/home/peter/data_projects/chromadb_server/notes/CELEX_32016R0679_EN_TXT.html", "r", encoding="utf-8") as f:
     html = f.read()
 
 soup = BeautifulSoup(html, "html.parser")
@@ -34,5 +34,5 @@ with open("intermediate.html", "w", encoding="utf-8") as i:
 
 markdown = md(clean_html)
 
-with open("/home/peter/data_projects/chromadb_server/CELEX_32016R0679_EN_TXT.md", "w", encoding="utf-8") as md:
+with open("/home/peter/data_projects/chromadb_server/notes/CELEX_32016R0679_EN_TXT.md", "w", encoding="utf-8") as md:
     md.write(markdown)
