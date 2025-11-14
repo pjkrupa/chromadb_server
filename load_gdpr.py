@@ -35,7 +35,7 @@ def part_switch(line: str, part: Part):
         case _:
             return False, part
         
-def parse_header(line: str, chunk: Chunk):
+def make_chunk(line: str, chunk: Chunk):
     chunk.text = chunk.text + " " + line
     return chunk 
 
@@ -43,6 +43,7 @@ roman_numerals = {
     'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11
 }
 
+## removes the empty lines from the file:
 # open("./notes/gdpr_clean.txt", "w").writelines(
 #     line for line in open("./notes/gdpr.txt") if line.strip()
 # )
@@ -61,10 +62,20 @@ with open("./notes/gdpr_clean.txt", "r", encoding="utf-8") as f:
             documents.append(chunk)
             chunk = Chunk(deepcopy(state))
             continue
+        
+        if is_switch and state.part.value == "endnotes":
+            documents.append(chunk)
+            state.chapter = 0
+            state.chapter_title = "endnotes"
+            state.section = 0
+            state.section_title = "endnotes"
+            state.article = 0
+            state.article_title = "endnotes"
+            chunk = Chunk(deepcopy(state))
 
         match state.part.value:
             case "header":
-                parse_header(line, chunk)
+                make_chunk(line, chunk)
             case "preamble":
                 preamble_pattern = re.compile(r'^\(\d+\)$')
                 if preamble_pattern.match(line):
@@ -96,8 +107,10 @@ with open("./notes/gdpr_clean.txt", "r", encoding="utf-8") as f:
                         state.article_title = next(f).strip()
                     case _:
                         chunk.text = chunk.text + " " + line
-            # case "endnotes":
-            #     result = parse_endnotes(line)
+            case "endnotes":
+                make_chunk(line, chunk)
+
+documents.append(chunk)
 
 for document in documents:
     print(document.metadata)
