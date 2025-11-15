@@ -1,6 +1,6 @@
 from dataclasses import dataclass, asdict
 from enum import Enum
-import re, chromadb, uuid
+import re, chromadb, uuid, requests
 from copy import deepcopy
 
 @dataclass
@@ -36,6 +36,14 @@ def make_chunk(line: str, chunk: Chunk):
 roman_numerals = {
     'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11
 }
+
+def embed(text: str):
+    resp = requests.post(
+        "http://localhost:8001/embeddings",
+        json={"text": text},
+        timeout=20
+    )
+    return resp.json()["embedding"]
 
 ## removes the empty lines from the file:
 # open("./notes/gdpr_clean.txt", "w").writelines(
@@ -109,14 +117,16 @@ documents.append(chunk)
 print(f"Number of documents: {len(documents)}")
 
 metadatas = [asdict(document.metadata) for document in documents]
-documents = [document.text for document in documents]
+texts = [document.text for document in documents]
 ids = [str(uuid.uuid4()) for i in range(len(documents))]
+embs = [embed(doc.text) for doc in documents]
 
 chroma_client = chromadb.HttpClient(host="localhost", port=8000)
-# chroma_client.delete_collection(name="my_collection")
+chroma_client.delete_collection(name="gdpr")
 collection = chroma_client.get_or_create_collection(name="gdpr")
 collection.upsert(
         ids=ids, 
-        documents=documents,
-        metadatas=metadatas
+        documents=texts,
+        metadatas=metadatas,
+        embeddings=embs
         )
