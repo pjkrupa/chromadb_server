@@ -97,16 +97,19 @@ with open("./notes/gdpr_clean.txt", "r", encoding="utf-8") as f:
                         ch = line.split(" ")
                         state.chapter = roman_numerals[ch[1]]
                         state.chapter_title = next(f).strip()
+                        chunk = chunk + " " + state.chapter_title
                     case _ if (m := section_pattern.match(line)):
                         sec = line.split(" ")
                         state.section = int(line.split()[1])
                         state.section_title = next(f).strip()
+                        chunk = chunk + " " + state.section_title
                     case _ if (m := article_pattern.match(line)):
                         documents.append(chunk)
                         chunk = Chunk(deepcopy(state))
                         ar = line.split(" ")
                         state.article = int(line.split()[1])
                         state.article_title = next(f).strip()
+                        chunk = chunk + " " + state.article_title
                     case _:
                         chunk.text = chunk.text + " " + line
             case "endnotes":
